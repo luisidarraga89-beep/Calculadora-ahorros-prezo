@@ -11,6 +11,291 @@
         :root {
             --prezo-light-green: #83c99a; /* El verde claro de fondo */
             --prezo-dark-text: #1e0a29;  /* Morado oscuro para títulos y botón */
+            --prezo-light-bg: #e5f1e1;   /* Fondo muy claro para el recuadro de ahorro (no usado en este diseño) */
+        }
+
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .calculator-container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 900px; 
+            display: flex; 
+            flex-wrap: wrap; 
+        }
+        
+        /* Uso del morado oscuro para el título */
+        h1 { color: var(--prezo-dark-text); text-align: center; margin-bottom: 25px; width: 100%; }
+        
+        .input-section { flex: 1; min-width: 300px; padding-right: 20px; }
+        .result-section { flex: 1; min-width: 400px; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .input-group { margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .input-group label { flex: 2; margin-right: 15px; font-size: 14px; font-weight: bold; }
+        .input-group input, .input-group select { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        
+        /* Botón "Calcular Ahorro" con el morado oscuro */
+        button { 
+            background-color: var(--prezo-dark-text); 
+            color: white; 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            width: 100%; 
+            margin-top: 20px; 
+            transition: background-color 0.3s; 
+        }
+        button:hover { background-color: #3f1e52; } 
+        
+        /* Recuadro de Ahorro Total con colores corporativos */
+        .total-savings-box { 
+            background-color: var(--prezo-light-green); 
+            border: 2px solid var(--prezo-dark-text); 
+            padding: 15px; 
+            text-align: center; 
+            margin-top: 20px; 
+            border-radius: 6px; 
+            width: 100%; 
+            max-width: 300px; 
+        }
+        .total-savings-box p { margin: 5px 0; font-size: 16px; font-weight: bold; color: var(--prezo-dark-text); } 
+        .total-savings-box .total-amount { font-size: 28px; font-weight: bold; color: var(--prezo-dark-text); margin: 5px 0; } 
+        
+        .chart-container { position: relative; width: 100%; max-width: 400px; height: 400px; margin-top: 20px; }
+        .disclaimer { font-size: 12px; color: #777; margin-top: 15px; text-align: center; width: 100%; }
+
+        /* Media Queries para pantallas más pequeñas (opcional) */
+        @media (max-width: 768px) {
+            .calculator-container { flex-direction: column; padding: 20px; }
+            .input-section, .result-section { padding: 0; width: 100%; }
+            .input-section { margin-bottom: 20px; }
+            .total-savings-box { max-width: 100%; }
+            .chart-container { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-container">
+    <h1>Calcula tu Ahorro Potencial con Prezo</h1>
+    
+    <div class="input-section">
+        <div class="input-group">
+            <label for="locales">Número de locales:</label>
+            <input type="number" id="locales" value="1" min="1">
+        </div>
+
+        <div class="input-group">
+            <label for="facturacion">Facturación mensual aprox. (€):</label>
+            <input type="number" id="facturacion" value="10000" min="0">
+        </div>
+
+        <div class="input-group">
+            <label for="materiaPrima">Gasto mensual en materia prima (€):</label>
+            <input type="number" id="materiaPrima" value="3000" min="0">
+        </div>
+
+        <div class="input-group">
+            <label for="albaranes">Nº de albaranes recibidos al mes:</label>
+            <input type="number" id="albaranes" value="300" min="0">
+        </div>
+
+        <div class="input-group">
+            <label for="facturas">Nº de facturas recibidas al mes:</label>
+            <input type="number" id="facturas" value="50" min="0">
+        </div>
+        
+        <div class="input-group">
+            <label for="proveedores">Nº de proveedores:</label>
+            <input type="number" id="proveedores" value="25" min="1">
+        </div>
+
+        <div class="input-group">
+            <label for="tiempoPedidos">Tiempo invertido en pedidos (h/mes):</label>
+            <input type="number" id="tiempoPedidos" value="8" min="0" step="0.5">
+        </div>
+
+        <div class="input-group">
+            <label for="tiempoInventario">Tiempo invertido en inventario (h/mes):</label>
+            <input type="number" id="tiempoInventario" value="10" min="0" step="0.5">
+        </div>
+
+        <button onclick="calcularAhorro()">Calcular Ahorro</button>
+    </div>
+
+    <div class="result-section">
+        <div class="total-savings-box">
+            <p>Tu Ahorro Total Estimado es de:</p>
+            <p class="total-amount" id="totalAhorro">0,00 € / MES</p>
+        </div>
+        <div class="chart-container">
+            <canvas id="ahorroChart"></canvas>
+        </div>
+        <p class="disclaimer">Estos cálculos son estimaciones basadas en datos promedio del sector y el impacto de la gestión con Prezo. Tus resultados reales pueden variar.</p>
+    </div>
+</div>
+
+<script>
+    const COSTO_HORA = 15; // €/hora
+    const AHORRO_MIN_CONCILIACION = 9 * 0.99; // 9 min * 99%
+    const AHORRO_MIN_OCR = 3 * 0.99; // 3 min * 99%
+    let ahorroChart; 
+
+    // Colores de Prezo para el gráfico (Tonos Morados, ajustados para 7 segmentos)
+    const prezoColors = [
+        '#4a148c', // Morado Oscuro 1
+        '#6a1b9a', // Morado Oscuro 2
+        '#7b1fa2', // Morado Medio 1
+        '#9c27b0', // Morado Medio 2
+        '#ce93d8', // Lavanda Oscuro
+        '#e1bee7', // Lavanda Medio
+        '#f3e5f5'  // Lavanda Claro
+    ];
+
+    function calcularAhorro() {
+        const locales = parseFloat(document.getElementById('locales').value) || 0;
+        const materiaPrima = parseFloat(document.getElementById('materiaPrima').value) || 0;
+        const albaranes = parseFloat(document.getElementById('albaranes').value) || 0;
+        const facturas = parseFloat(document.getElementById('facturas').value) || 0;
+        const tiempoPedidos = parseFloat(document.getElementById('tiempoPedidos').value) || 0;
+        const tiempoInventario = parseFloat(document.getElementById('tiempoInventario').value) || 0;
+
+        // CÁLCULOS (Basados en el archivo CALCULADORA DE AHORROS - CALCULADORA.csv)
+        const ahorroConsumo = materiaPrima * 0.10; // 10%
+        const ahorroNegociacion = materiaPrima * 0.15; // 15%
+        const ahorroMermas = materiaPrima * 0.05 * 0.30; // Basado en 5% de merma * 30% de ahorro
+        
+        // Ahorro Conciliación (9 min por factura)
+        const ahorroConciliacion = facturas * AHORRO_MIN_CONCILIACION * (COSTO_HORA / 60);
+
+        // NUEVO: Ahorro OCR (3 min por albarán)
+        const ahorroOCR = albaranes * AHORRO_MIN_OCR * (COSTO_HORA / 60); 
+
+        const ahorroPedidos = tiempoPedidos * COSTO_HORA * 0.30; // 30%
+        const ahorroInventario = tiempoInventario * COSTO_HORA * 0.80; // 80%
+
+        // Suma de las 7 líneas de ahorro
+        const ahorroBase = ahorroConsumo + ahorroNegociacion + ahorroMermas + ahorroConciliacion + ahorroOCR + ahorroPedidos + ahorroInventario;
+
+        // FACTOR DE ESCALA
+        let factorEscala = 1;
+        if (locales >= 5 && locales <= 9) {
+            factorEscala = 0.9;
+        } else if (locales >= 10 && locales <= 15) {
+            factorEscala = 0.8;
+        } else if (locales > 15) {
+            factorEscala = 0.7;
+        }
+
+        const ahorroFinal = ahorroBase * factorEscala;
+
+        // Mostrar el ahorro total
+        document.getElementById('totalAhorro').textContent = ahorroFinal.toFixed(2).replace('.', ',') + ' € / MES';
+
+        // Preparar datos para el gráfico (7 segmentos)
+        const datosAhorro = [
+            ahorroConsumo * factorEscala,
+            ahorroNegociacion * factorEscala,
+            ahorroMermas * factorEscala,
+            ahorroConciliacion * factorEscala,
+            ahorroOCR * factorEscala, // NUEVO ÍTEM
+            ahorroPedidos * factorEscala,
+            ahorroInventario * factorEscala
+        ];
+
+        // Etiquetas resumidas para mejor legibilidad en el gráfico
+        const etiquetasAhorro = [
+            'MP Consumo (10%)',
+            'MP Compras (15%)',
+            'Ahorro en Mermas',
+            'Conciliación Doc.',
+            'OCR Albaranes', // NUEVA ETIQUETA
+            'Tiempo Pedidos',
+            'Tiempo Inventario'
+        ];
+
+        actualizarGrafico(etiquetasAhorro, datosAhorro);
+    }
+
+    function actualizarGrafico(labels, data) {
+        const ctx = document.getElementById('ahorroChart').getContext('2d');
+
+        if (ahorroChart) {
+            // Actualizar datos
+            ahorroChart.data.labels = labels;
+            ahorroChart.data.datasets[0].data = data;
+            ahorroChart.data.datasets[0].backgroundColor = prezoColors.slice(0, data.length); // Asegura usar solo los colores necesarios
+            ahorroChart.update();
+        } else {
+            // Crear gráfico
+            ahorroChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: prezoColors.slice(0, data.length), // Asegura usar solo los colores necesarios
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right', 
+                            labels: {
+                                font: {
+                                    size: 11 
+                                },
+                                color: '#333'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Distribución del Ahorro Potencial',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            color: 'var(--prezo-dark-text)' 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        // Muestra el valor en € con formato de miles
+                                        label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(context.parsed);
+                                        
+                                        // Muestra porcentaje
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((context.parsed / total) * 100);
+                                        label += ` (${percentage}%)`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', calcularAhorro);
+</script>
+</body>
+</html>los nuevos colores corporativos */
+        :root {
+            --prezo-light-green: #83c99a; /* El verde claro de fondo */
+            --prezo-dark-text: #1e0a29;  /* Morado oscuro para títulos y botón */
             --prezo-light-bg: #e5f1e1;   /* Fondo muy claro para el recuadro de ahorro */
         }
 
